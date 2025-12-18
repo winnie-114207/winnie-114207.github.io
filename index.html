@@ -6,6 +6,201 @@
     <link rel="icon" href="star.png">
   </head>
   <body>
-    hello world
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腦力開發中心 - 完美中文判定版</title>
+    <style>
+        :root { --p: #4f46e5; --s: #10b981; --bg: #f3f4f6; --danger: #ef4444; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; width: 650px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        h1 { font-size: 2.5rem; color: var(--p); margin-top: 0; }
+        .menu-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        button { padding: 15px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 10px; transition: 0.2s; background: var(--p); color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        .exit-btn { background: var(--danger); margin-top: 15px; padding: 10px; font-size: 1rem; width: 100%; }
+        .back-btn { background: #6b7280; margin-top: 20px; padding: 10px; font-size: 1rem; width: 100%; }
+        #type-sample { background: #f9fafb; padding: 20px; margin: 15px 0; border-radius: 8px; text-align: left; line-height: 1.6; border-left: 5px solid var(--p); font-size: 1.1rem; min-height: 80px; word-break: break-all; }
+        #input-area { width: 100%; height: 90px; margin-bottom: 10px; padding: 12px; box-sizing: border-box; font-size: 1rem; border: 2px solid #ddd; border-radius: 8px; resize: none; }
+        .timer { font-size: 2.5rem; color: var(--danger); font-weight: bold; margin: 5px 0; }
+        #memory-board { position: relative; width: 100%; height: 380px; background: #e5e7eb; border-radius: 10px; margin-top: 15px; overflow: hidden; }
+        .node { position: absolute; width: 50px; height: 50px; background: var(--s); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; cursor: pointer; }
+        .node.hidden { font-size: 0; background: #4f46e5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="screen-home" class="screen active">
+        <h1>🧠 腦力遊戲</h1>
+        <p>專業中文輸入優化版本</p>
+        <button onclick="showScreen('screen-lobby')" style="width: 200px;">點擊開始</button>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2>模式選擇</h2>
+        <div class="menu-btns">
+            <button onclick="showScreen('screen-typing')">⌨️ 打字測速 (10秒)</button>
+            <button onclick="showScreen('screen-memory')" style="background:var(--s)">🧠 記憶速度挑戰</button>
+        </div>
+        <button class="back-btn" onclick="showScreen('screen-home')">返回主選單</button>
+    </div>
+
+    <div id="screen-typing" class="screen">
+        <h3>打字挑戰 (10s)</h3>
+        <p>最高紀錄: <span id="type-best">0</span> 字/分</p>
+        <div class="timer" id="type-timer">10</div>
+        <div id="type-sample">準備中...</div>
+        <textarea id="input-area" disabled placeholder="計時開始後，請依照上方範文輸入..."></textarea>
+        <div class="menu-btns" id="type-ctrl">
+            <button onclick="startTyping('en')">隨機英文</button>
+            <button onclick="startTyping('zh')" style="background:var(--s)">隨機中文</button>
+        </div>
+        <button class="exit-btn" onclick="abortTyping()">退出遊戲</button>
+    </div>
+
+    <div id="screen-memory" class="screen">
+        <h3>記憶挑戰</h3>
+        <p>最高紀錄: 第 <span id="mem-best">0</span> 關</p>
+        <p id="mem-status">點擊啟動開始遊戲</p>
+        <div id="memory-board"></div>
+        <button id="mem-start-btn" onclick="startMemoryGame()" style="margin-top:15px; width:100%">啟動挑戰</button>
+        <button class="exit-btn" onclick="abortMemory()">退出遊戲</button>
+    </div>
+</div>
+
+<script>
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'screen-typing') loadTypeBest();
+        if(id === 'screen-memory') loadMemBest();
+    }
+
+    const typeRepo = {
+        en: ["The rapid development of artificial intelligence is changing how we work and live in the modern digital age.", "Success is not final, failure is not fatal: it is the courage to continue that really counts.", "Inspiration exists, but it has to find you working hard every single day to achieve your personal goals.", "Be yourself; everyone else is already taken. Stay hungry, stay foolish, and always keep moving forward.", "The only way to do great work is to love what you do. If you haven't found it yet, keep looking."],
+        zh: ["科技的進步讓世界變得更加緊密，我們應該學會如何有效地利用這些資源來提升自己的工作競爭力。", "人生最精彩的並非永遠不失敗，而是每次跌倒都能堅強地站起來，並從錯誤中學習到寶貴的經驗。", "專注於眼下的每一件小事，當你把簡單的事情做到極致，自然就能在平凡之中創造出不平凡的價值。", "閱讀不僅能讓我們獲得知識，更能開闊我們的視野，讓我們學會從不同的角度去看待這個多元的世界。", "良好的溝通是建立人際關係的基石，學會傾聽他人的想法，才能在團隊合作中達成共識並創造雙贏。"]
+    };
+
+    let typeInterval;
+    const inputArea = document.getElementById('input-area');
+
+    function loadTypeBest() { document.getElementById('type-best').innerText = localStorage.getItem('typeBest10s') || 0; }
+
+    function startTyping(mode) {
+        const samples = typeRepo[mode];
+        const selectedSample = samples[Math.floor(Math.random() * samples.length)];
+        let timeLeft = 10;
+        document.getElementById('type-sample').innerText = selectedSample;
+        document.getElementById('type-ctrl').style.display = 'none';
+        inputArea.disabled = false;
+        inputArea.value = "";
+        inputArea.focus();
+
+        typeInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('type-timer').innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(typeInterval);
+                checkResult(selectedSample);
+            }
+        }, 1000);
+    }
+
+    function checkResult(sample) {
+        // 先獲取內容再關閉輸入框，避免注音被強行塞入
+        let rawTyped = inputArea.value;
+        inputArea.disabled = true;
+
+        // 【關鍵優化】過濾掉所有注音符號 (ㄅ-ㄩ, ˊˇˋ˙)
+        // 這些符號的 Unicode 範圍是 \u3105-\u3129 以及結合調號
+        const cleanTyped = rawTyped.replace(/[\u3105-\u3129\u02CA\u02C7\u02CB\u02D9]/g, "");
+
+        let isCorrect = cleanTyped.length > 0;
+        for(let i=0; i < cleanTyped.length; i++) {
+            if(cleanTyped[i] !== sample[i]) { isCorrect = false; break; }
+        }
+
+        const wpm = cleanTyped.length * 6;
+        if(isCorrect) {
+            let best = parseInt(localStorage.getItem('typeBest10s') || 0);
+            if(wpm > best) localStorage.setItem('typeBest10s', wpm);
+            alert(`完美正確！(已自動過濾末尾注音)\n速度：${wpm} 字/分`);
+        } else {
+            alert(`判定失敗：內容不符或包含錯字。`);
+        }
+        resetTypeUI();
+    }
+
+    function abortTyping() {
+        clearInterval(typeInterval);
+        resetTypeUI();
+        showScreen('screen-lobby');
+    }
+
+    function resetTypeUI() {
+        document.getElementById('type-ctrl').style.display = 'flex';
+        document.getElementById('type-timer').innerText = 10;
+        inputArea.value = "";
+        inputArea.disabled = true;
+        document.getElementById('type-sample').innerText = "請選擇語言開始挑戰...";
+        loadTypeBest();
+    }
+
+    /* --- 記憶邏輯部分 (保持原樣) --- */
+    let memLevel = 1, memSequence = [], userStep = 0, memTimer;
+    function loadMemBest() { document.getElementById('mem-best').innerText = localStorage.getItem('memBest') || 0; }
+    function startMemoryGame() { memLevel = 1; document.getElementById('mem-start-btn').style.display = 'none'; nextMemLevel(); }
+    function nextMemLevel() {
+        const board = document.getElementById('memory-board');
+        board.innerHTML = ""; memSequence = []; userStep = 0;
+        document.getElementById('mem-status').innerText = `第 ${memLevel} 關：記住位置 (5s)`;
+        for(let i=1; i <= memLevel; i++) {
+            const node = document.createElement('div');
+            node.className = 'node'; node.innerText = i;
+            node.style.left = Math.random() * 85 + 5 + "%";
+            node.style.top = Math.random() * 85 + 5 + "%";
+            board.appendChild(node); memSequence.push(node);
+        }
+        clearTimeout(memTimer);
+        memTimer = setTimeout(() => {
+            memSequence.forEach(n => n.classList.add('hidden'));
+            document.getElementById('mem-status').innerText = "請依序點擊！";
+            enableClicks();
+        }, 5000);
+    }
+    function enableClicks() {
+        memSequence.forEach(node => {
+            node.onclick = function() {
+                if(this.innerText == (userStep + 1)) {
+                    this.classList.remove('hidden'); this.style.background = "#cbd5e1"; this.onclick = null;
+                    userStep++;
+                    if(userStep === memLevel) { memLevel++; setTimeout(nextMemLevel, 800); }
+                } else {
+                    alert("順序錯誤！遊戲結束。");
+                    let best = parseInt(localStorage.getItem('memBest') || 0);
+                    if(memLevel-1 > best) localStorage.setItem('memBest', memLevel-1);
+                    abortMemory();
+                }
+            };
+        });
+    }
+    function abortMemory() {
+        clearTimeout(memTimer);
+        document.getElementById('memory-board').innerHTML = "";
+        document.getElementById('mem-start-btn').style.display = 'block';
+        document.getElementById('mem-status').innerText = "點擊啟動開始遊戲";
+        showScreen('screen-lobby');
+    }
+</script>
+
+</body>
+</html>
+</body>
+</html>
   </body>
 </html>
